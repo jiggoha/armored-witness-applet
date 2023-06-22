@@ -20,5 +20,5 @@ RUN echo 'untrusted comment: signify secret key' > armored-witness-applet.sec
 RUN echo $_APPLET_PRIVATE_KEY >> armored-witness-applet.sec
 ENV APPLET_PRIVATE_KEY=armored-witness-applet.sec
 
-RUN make trusted_applet
+RUN make elf 
 
