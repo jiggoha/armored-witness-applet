@@ -50,6 +50,8 @@ GOFLAGS = -tags ${BUILD_TAGS} -trimpath \
 
 all: trusted_applet
 
+elf: APP=trusted_applet
+elf: DIR=$(CURDIR)/trusted_applet
 elf: $(APP).elf
 
 trusted_applet: APP=trusted_applet
