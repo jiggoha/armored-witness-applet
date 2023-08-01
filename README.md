@@ -1,5 +1,3 @@
-test2
-
 # ArmoredWitness Applet
 
 This repo contains code for a GoTEE Trusted Applet which implements
