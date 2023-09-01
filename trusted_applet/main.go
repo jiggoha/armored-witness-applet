@@ -50,18 +50,19 @@ import (
 )
 
 const (
-	// slotsPartitionOffsetBytes defines where our witness data storage partition starts.
+	// slotsPartitionStartBlock defines where our witness data storage partition starts.
 	// Changing this location is overwhelmingly likely to result in data loss.
-	slotsPartitionOffsetBytes = 1 << 30
-	// slotsPartitionLengthBytes specifies the size of the slots partition.
+	slotsPartitionStartBlock = 0x400000
+	// slotsPartitionLengthBlocks specifies the size of the slots partition.
 	// Increasing this value is relatively safe, if you're sure there is no data
 	// stored in blocks which follow the current partition.
 	//
-	// We're starting with enough space for 1024 slots of 1MB each.
-	slotsPartitionLengthBytes = 1024 * slotSizeBytes
+	// We're starting with enough space for 4096 slots of 512KB each, which should be plenty.
+	slotsPartitionLengthBlocks = 0x400000
 
 	// slotSizeBytes is the size of each individual slot in the partition.
-	slotSizeBytes = 1 << 20
+	// Changing this is overwhelmingly likely to result in data loss.
+	slotSizeBytes = 512 << 10
 )
 
 var (
@@ -151,6 +152,8 @@ func main() {
 
 	// (Re-)create our witness identity based on the device's internal secret key.
 	deriveWitnessKey()
+	// Update our status in OS so custodian can inspect our signing identity even if there's no network.
+	syscall.Call("RPC.SetWitnessStatus", rpc.WitnessStatus{Identity: witnessPublicKey}, nil)
 
 	go func() {
 		l := true
@@ -218,6 +221,8 @@ func runWithNetworking(ctx context.Context) error {
 		return fmt.Errorf("runWithNetworking has no network configured: %v", tcpErr)
 	}
 	log.Printf("TA Version:%s MAC:%s IP:%s GW:%s DNS:%s", Version, iface.NIC.MAC.String(), addr, iface.Stack.GetRouteTable(), resolver)
+	// Update status with latest IP address too.
+	syscall.Call("RPC.SetWitnessStatus", rpc.WitnessStatus{Identity: witnessPublicKey, IP: addr.Address.String()}, nil)
 
 	select {
 	case <-runNTP(ctx):
@@ -311,8 +316,8 @@ func openStorage() *slots.Partition {
 	dev := &storage.Device{CardInfo: &info}
 	bs := dev.BlockSize()
 	geo := slots.Geometry{
-		Start:  slotsPartitionOffsetBytes / bs,
-		Length: slotsPartitionLengthBytes / bs,
+		Start:  slotsPartitionStartBlock,
+		Length: slotsPartitionLengthBlocks,
 	}
 	sl := slotSizeBytes / bs
 	for i := uint(0); i < geo.Length; i += sl {
